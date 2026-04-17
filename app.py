@@ -81,6 +81,7 @@ def render_header():
 
     with col1:
         st.title("🏢 Business Unit Manager")
+        st.caption("Lead: Ram Barot - Lead Data Engineer | Enterprise & Data Analytics Team")
 
     with col2:
         # Environment mode indicator

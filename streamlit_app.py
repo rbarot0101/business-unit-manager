@@ -176,6 +176,10 @@ def initialize_session_state():
         st.session_state.last_refresh = datetime.now()
     if 'selected_row_data' not in st.session_state:
         st.session_state.selected_row_data = None
+    if 'bu_selected_option' not in st.session_state:
+        st.session_state.bu_selected_option = "-- Select a record --"
+    if 'wn_selected_option' not in st.session_state:
+        st.session_state.wn_selected_option = "-- Select a record --"
 
 def render_header():
     """Render header."""
@@ -183,6 +187,7 @@ def render_header():
 
     with col1:
         st.title("🏢 Business Unit Manager")
+        st.caption("Lead: Ram Barot - Lead Data Engineer | Enterprise & Data Analytics Team")
 
     with col2:
         env_mode = get_environment_mode()
@@ -203,7 +208,16 @@ def render_sidebar():
         key="table_radio"
     )
 
-    st.session_state.selected_table = 'business_units' if table_option == "Business Unit Details" else 'web_names'
+    new_table = 'business_units' if table_option == "Business Unit Details" else 'web_names'
+
+    # Clear selection when switching tables
+    if 'selected_table' in st.session_state and st.session_state.selected_table != new_table:
+        st.session_state.selected_row_data = None
+        st.session_state.edit_mode = False
+        st.session_state.bu_selected_option = "-- Select a record --"
+        st.session_state.wn_selected_option = "-- Select a record --"
+
+    st.session_state.selected_table = new_table
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔍 Search")
@@ -225,6 +239,8 @@ def render_sidebar():
             st.session_state.selected_row_data = None
             st.session_state.edit_mode = False
             st.session_state.search_term = ""
+            st.session_state.bu_selected_option = "-- Select a record --"
+            st.session_state.wn_selected_option = "-- Select a record --"
             st.experimental_rerun()
 
 def render_business_units_table():
@@ -241,7 +257,9 @@ def render_business_units_table():
     st.dataframe(df, use_container_width=True, height=400)
 
     # Row selection using selectbox
-    st.markdown("**Select a record to edit:**")
+    st.markdown("---")
+    st.markdown("**📝 Select a record to edit:**")
+    st.caption("👇 Use the dropdown below to select a record")
 
     # Create display options for selectbox
     if not df.empty:
@@ -251,9 +269,32 @@ def render_business_units_table():
             for _, row in df.iterrows()
         ]
 
+        # Auto-select if only 1 record OR determine index from session state
+        current_index = 0
+        if len(df) == 1:
+            # Auto-select the only available record
+            current_index = 1
+            auto_selected_option = options[1]
+            if st.session_state.bu_selected_option != auto_selected_option:
+                st.session_state.bu_selected_option = auto_selected_option
+                st.session_state.selected_row_data = df.iloc[0].to_dict()
+                st.session_state.edit_mode = True
+        elif st.session_state.bu_selected_option != "-- Select a record --":
+            # Try to find the stored selection in current options
+            for idx, opt in enumerate(options):
+                if opt == st.session_state.bu_selected_option:
+                    current_index = idx
+                    break
+            # If stored option not found in current filtered results, reset
+            if current_index == 0 and st.session_state.bu_selected_option != "-- Select a record --":
+                st.session_state.bu_selected_option = "-- Select a record --"
+                st.session_state.selected_row_data = None
+                st.session_state.edit_mode = False
+
         selected_option = st.selectbox(
             "Choose a record:",
             options=options,
+            index=current_index,
             key="bu_selectbox"
         )
 
@@ -265,7 +306,13 @@ def render_business_units_table():
             if not selected_row.empty:
                 st.session_state.selected_row_data = selected_row.iloc[0].to_dict()
                 st.session_state.edit_mode = True
+                st.session_state.bu_selected_option = selected_option
                 st.success(f"Selected: {store_cd}")
+        else:
+            # Clear selection if "-- Select a record --" is chosen
+            st.session_state.selected_row_data = None
+            st.session_state.edit_mode = False
+            st.session_state.bu_selected_option = "-- Select a record --"
 
     if st.session_state.edit_mode and st.session_state.selected_row_data:
         render_business_unit_form()
@@ -284,7 +331,9 @@ def render_web_names_table():
     st.dataframe(df, use_container_width=True, height=400)
 
     # Row selection using selectbox
-    st.markdown("**Select a record to edit:**")
+    st.markdown("---")
+    st.markdown("**📝 Select a record to edit:**")
+    st.caption("👇 Use the dropdown below to select a record")
 
     # Create display options for selectbox
     if not df.empty:
@@ -294,9 +343,32 @@ def render_web_names_table():
             for _, row in df.iterrows()
         ]
 
+        # Auto-select if only 1 record OR determine index from session state
+        current_index = 0
+        if len(df) == 1:
+            # Auto-select the only available record
+            current_index = 1
+            auto_selected_option = options[1]
+            if st.session_state.wn_selected_option != auto_selected_option:
+                st.session_state.wn_selected_option = auto_selected_option
+                st.session_state.selected_row_data = df.iloc[0].to_dict()
+                st.session_state.edit_mode = True
+        elif st.session_state.wn_selected_option != "-- Select a record --":
+            # Try to find the stored selection in current options
+            for idx, opt in enumerate(options):
+                if opt == st.session_state.wn_selected_option:
+                    current_index = idx
+                    break
+            # If stored option not found in current filtered results, reset
+            if current_index == 0 and st.session_state.wn_selected_option != "-- Select a record --":
+                st.session_state.wn_selected_option = "-- Select a record --"
+                st.session_state.selected_row_data = None
+                st.session_state.edit_mode = False
+
         selected_option = st.selectbox(
             "Choose a record:",
             options=options,
+            index=current_index,
             key="wn_selectbox"
         )
 
@@ -308,7 +380,13 @@ def render_web_names_table():
             if not selected_row.empty:
                 st.session_state.selected_row_data = selected_row.iloc[0].to_dict()
                 st.session_state.edit_mode = True
+                st.session_state.wn_selected_option = selected_option
                 st.success(f"Selected: {selected_row.iloc[0].get('DISPLAY_NAME')}")
+        else:
+            # Clear selection if "-- Select a record --" is chosen
+            st.session_state.selected_row_data = None
+            st.session_state.edit_mode = False
+            st.session_state.wn_selected_option = "-- Select a record --"
 
     if st.session_state.edit_mode and st.session_state.selected_row_data:
         render_web_name_form()
