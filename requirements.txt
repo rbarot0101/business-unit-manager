@@ -1,0 +1,26 @@
+# Streamlit (requires 1.35+ for selection_mode in dataframe)
+streamlit>=1.35.0
+
+# Snowflake Database
+snowflake-connector-python==3.0.0
+snowflake-sqlalchemy==1.5.0
+
+# Data Manipulation
+pandas==2.2.0
+numpy==1.26.0
+
+# Configuration
+python-dotenv==1.0.0
+tomli==2.0.1
+cryptography<41.0.0  # Must be <41.0.0 for snowflake-connector-python compatibility
+
+# Logging
+loguru==0.7.2
+
+# Testing (optional)
+pytest==8.0.0
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Utilities
+pyyaml==6.0.1
