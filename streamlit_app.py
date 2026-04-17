@@ -92,15 +92,38 @@ def update_business_unit(store_cd, updates):
         tables = get_table_names()
         table_name = f"ODS.PUBLIC.{tables['business_unit_details']}"
 
-        set_clause = ", ".join([f"{col} = '{val}'" for col, val in updates.items()])
+        # Build SET clause with proper data type handling
+        set_parts = []
+        for col, val in updates.items():
+            if val is None:
+                set_parts.append(f"{col} = NULL")
+            elif isinstance(val, bool):
+                set_parts.append(f"{col} = {str(val).upper()}")
+            elif isinstance(val, (int, float)):
+                set_parts.append(f"{col} = {val}")
+            elif isinstance(val, str):
+                # Escape single quotes in strings
+                escaped_val = val.replace("'", "''")
+                set_parts.append(f"{col} = '{escaped_val}'")
+            else:
+                # For dates and other types, convert to string
+                set_parts.append(f"{col} = '{val}'")
+
+        set_clause = ", ".join(set_parts)
         query = f"UPDATE {table_name} SET {set_clause} WHERE STORE_CD = '{store_cd}'"
 
-        session.sql(query).collect()
+        # Execute the query
+        result = session.sql(query).collect()
+
+        # Clear caches
         get_business_units.clear()
         get_web_names.clear()
+
+        st.success(f"Updated record for Store Code: {store_cd}")
         return True
     except Exception as e:
         st.error(f"Update failed: {str(e)}")
+        st.error(f"Query attempted: {query if 'query' in locals() else 'N/A'}")
         return False
 
 def update_web_name(business_unit_cd, updates):
@@ -110,15 +133,33 @@ def update_web_name(business_unit_cd, updates):
         tables = get_table_names()
         table_name = f"ODS.PUBLIC.{tables['business_unit_web_name']}"
 
-        set_clause = ", ".join([f"{col} = '{val}'" for col, val in updates.items()])
+        # Build SET clause with proper data type handling
+        set_parts = []
+        for col, val in updates.items():
+            if val is None or val == '':
+                set_parts.append(f"{col} = NULL")
+            elif isinstance(val, str):
+                # Escape single quotes in strings
+                escaped_val = val.replace("'", "''")
+                set_parts.append(f"{col} = '{escaped_val}'")
+            else:
+                set_parts.append(f"{col} = '{val}'")
+
+        set_clause = ", ".join(set_parts)
         query = f"UPDATE {table_name} SET {set_clause} WHERE BUSINESS_UNIT_CD = '{business_unit_cd}'"
 
-        session.sql(query).collect()
+        # Execute the query
+        result = session.sql(query).collect()
+
+        # Clear caches
         get_business_units.clear()
         get_web_names.clear()
+
+        st.success(f"Updated web name for Business Unit: {business_unit_cd}")
         return True
     except Exception as e:
         st.error(f"Update failed: {str(e)}")
+        st.error(f"Query attempted: {query if 'query' in locals() else 'N/A'}")
         return False
 
 def initialize_session_state():
