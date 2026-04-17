@@ -176,14 +176,14 @@ def render_sidebar():
             get_business_units.clear()
             get_web_names.clear()
             st.session_state.last_refresh = datetime.now()
-            st.rerun()
+            st.experimental_rerun()
 
     with col2:
         if st.button("✖ Clear", use_container_width=True):
             st.session_state.selected_row_index = None
             st.session_state.selected_row_data = None
             st.session_state.edit_mode = False
-            st.rerun()
+            st.experimental_rerun()
 
 def render_business_units_table():
     """Render business units table."""
@@ -308,12 +308,12 @@ def render_business_unit_form():
                     if update_business_unit(row.get('STORE_CD'), updates):
                         st.success("Updated successfully!")
                         st.session_state.edit_mode = False
-                        st.rerun()
+                        st.experimental_rerun()
 
             if cancelled:
                 st.session_state.edit_mode = False
                 st.session_state.selected_row_data = None
-                st.rerun()
+                st.experimental_rerun()
 
 def render_web_name_form():
     """Render edit form for web names."""
@@ -369,12 +369,12 @@ def render_web_name_form():
                     if update_web_name(row.get('BUSINESS_UNIT_CD'), updates):
                         st.success("Updated successfully!")
                         st.session_state.edit_mode = False
-                        st.rerun()
+                        st.experimental_rerun()
 
             if cancelled:
                 st.session_state.edit_mode = False
                 st.session_state.selected_row_data = None
-                st.rerun()
+                st.experimental_rerun()
 
 def main():
     """Main application."""
