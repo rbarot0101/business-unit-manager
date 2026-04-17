@@ -224,6 +224,7 @@ def render_sidebar():
             st.session_state.selected_row_index = None
             st.session_state.selected_row_data = None
             st.session_state.edit_mode = False
+            st.session_state.search_term = ""
             st.experimental_rerun()
 
 def render_business_units_table():
