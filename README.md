@@ -56,7 +56,7 @@ A professional Streamlit application for managing business unit data in Snowflak
    streamlit run app.py
    ```
 
-### Snowflake Deployment
+### Snowflake Streamlit Deployment
 
 See [deployment/SNOWFLAKE_DEPLOYMENT.md](deployment/SNOWFLAKE_DEPLOYMENT.md) for detailed deployment instructions.
 
@@ -66,6 +66,25 @@ python scripts/deploy_to_snowflake.py
 ```
 
 Access in Snowsight: **Projects → Streamlit → BUSINESS_UNIT_MANAGER**
+
+### S3 Deployment (DataApp Hub)
+
+Deploy to S3 for dynamic loading in EDA Data Apps Hub.
+
+See [s3_deployment/README.md](s3_deployment/README.md) for detailed instructions.
+
+**Quick deploy to staging:**
+```bash
+cd s3_deployment
+python deploy_to_s3.py
+```
+
+**Deploy to production:**
+```bash
+python deploy_to_s3.py --env prod
+```
+
+Access in DataApp Hub: **Forms → Data Management → Business Unit Manager**
 
 ## Project Structure
 
@@ -107,6 +126,14 @@ business_unit_web_name/
 ├── deployment/
 │   ├── SNOWFLAKE_DEPLOYMENT.md
 │   └── DEPLOYMENT_SUCCESS.md
+│
+├── s3_deployment/             # S3/DataApp Hub deployment
+│   ├── app.py                 # S3-compatible app version
+│   ├── metadata.json          # Hub app configuration
+│   ├── requirements.txt       # Additional dependencies
+│   ├── deploy_to_s3.py        # S3 deployment script
+│   ├── README.md              # S3 deployment docs
+│   └── DEPLOYMENT_GUIDE.md    # Step-by-step guide
 │
 └── tests/                     # Future: automated tests
 ```

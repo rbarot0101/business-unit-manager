@@ -95,19 +95,18 @@ def update_business_unit(store_cd, updates):
         # Build SET clause with proper data type handling
         set_parts = []
         for col, val in updates.items():
-            if val is None:
+            if val is None or val == '':
                 set_parts.append(f"{col} = NULL")
             elif isinstance(val, bool):
                 set_parts.append(f"{col} = {str(val).upper()}")
             elif isinstance(val, (int, float)):
                 set_parts.append(f"{col} = {val}")
+            elif hasattr(val, 'strftime'):  # Date/datetime object
+                set_parts.append(f"{col} = '{val.strftime('%Y-%m-%d')}'")
             elif isinstance(val, str):
                 # Escape single quotes in strings
                 escaped_val = val.replace("'", "''")
                 set_parts.append(f"{col} = '{escaped_val}'")
-            else:
-                # For dates and other types, convert to string
-                set_parts.append(f"{col} = '{val}'")
 
         set_clause = ", ".join(set_parts)
         query = f"UPDATE {table_name} SET {set_clause} WHERE STORE_CD = '{store_cd}'"
@@ -399,13 +398,67 @@ def render_business_unit_form():
         with st.form("bu_form"):
             st.subheader(f"Store: {row.get('STORE_CD')}")
 
+            # Coordinates
             col1, col2 = st.columns(2)
             with col1:
                 lat = st.number_input("Latitude", value=float(row.get('ADDR_LATITUDE', 0)), format="%.6f")
-                open_date = st.date_input("Open Date", value=row.get('OPEN_DATE'))
             with col2:
                 lon = st.number_input("Longitude", value=float(row.get('ADDR_LONGITUDE', 0)), format="%.6f")
-                marketing = st.checkbox("Marketing Updatable", value=bool(row.get('MARKETING_UPDATABLE')))
+
+            # Dates
+            col1, col2 = st.columns(2)
+            with col1:
+                open_date = st.date_input("Open Date", value=row.get('OPEN_DATE'))
+            with col2:
+                close_date = st.date_input("Close Date", value=row.get('CLOSE_DATE'))
+
+            # Store Hours
+            st.markdown("**Store Hours**")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                sun_open = st.text_input("Sunday Open", value=row.get('SUNDAY_OPEN', ''))
+            with col2:
+                sun_close = st.text_input("Sunday Close", value=row.get('SUNDAY_CLOSE', ''))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                mon_open = st.text_input("Monday Open", value=row.get('MONDAY_OPEN', ''))
+            with col2:
+                mon_close = st.text_input("Monday Close", value=row.get('MONDAY_CLOSE', ''))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                tue_open = st.text_input("Tuesday Open", value=row.get('TUESDAY_OPEN', ''))
+            with col2:
+                tue_close = st.text_input("Tuesday Close", value=row.get('TUESDAY_CLOSE', ''))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                wed_open = st.text_input("Wednesday Open", value=row.get('WEDNESDAY_OPEN', ''))
+            with col2:
+                wed_close = st.text_input("Wednesday Close", value=row.get('WEDNESDAY_CLOSE', ''))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                thu_open = st.text_input("Thursday Open", value=row.get('THURSDAY_OPEN', ''))
+            with col2:
+                thu_close = st.text_input("Thursday Close", value=row.get('THURSDAY_CLOSE', ''))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                fri_open = st.text_input("Friday Open", value=row.get('FRIDAY_OPEN', ''))
+            with col2:
+                fri_close = st.text_input("Friday Close", value=row.get('FRIDAY_CLOSE', ''))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                sat_open = st.text_input("Saturday Open", value=row.get('SATURDAY_OPEN', ''))
+            with col2:
+                sat_close = st.text_input("Saturday Close", value=row.get('SATURDAY_CLOSE', ''))
+
+            # Marketing flag
+            marketing = st.checkbox("Marketing Updatable", value=bool(row.get('MARKETING_UPDATABLE')))
 
             col1, col2 = st.columns(2)
             with col1:
@@ -423,6 +476,21 @@ def render_business_unit_form():
                         'ADDR_LATITUDE': lat,
                         'ADDR_LONGITUDE': lon,
                         'OPEN_DATE': open_date,
+                        'CLOSE_DATE': close_date,
+                        'SUNDAY_OPEN': sun_open,
+                        'SUNDAY_CLOSE': sun_close,
+                        'MONDAY_OPEN': mon_open,
+                        'MONDAY_CLOSE': mon_close,
+                        'TUESDAY_OPEN': tue_open,
+                        'TUESDAY_CLOSE': tue_close,
+                        'WEDNESDAY_OPEN': wed_open,
+                        'WEDNESDAY_CLOSE': wed_close,
+                        'THURSDAY_OPEN': thu_open,
+                        'THURSDAY_CLOSE': thu_close,
+                        'FRIDAY_OPEN': fri_open,
+                        'FRIDAY_CLOSE': fri_close,
+                        'SATURDAY_OPEN': sat_open,
+                        'SATURDAY_CLOSE': sat_close,
                         'MARKETING_UPDATABLE': marketing
                     }
                     if update_business_unit(row.get('STORE_CD'), updates):

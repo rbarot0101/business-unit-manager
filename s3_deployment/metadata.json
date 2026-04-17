@@ -1,0 +1,28 @@
+{
+  "name": "Business Unit Manager",
+  "identifier": "business-unit-manager",
+  "description": "Manage business unit details and web names with comprehensive validation",
+  "version": "1.0.0",
+  "category": "data-management",
+  "app_type": "form",
+  "owner": "Ram Barot - Lead Data Engineer, Enterprise & Data Analytics Team",
+  "icon": ":material/business:",
+  "required_groups": ["EDA-Data-Forms", "EDA-Admins"],
+  "tags": [
+    "data-management",
+    "business-units",
+    "form",
+    "ods"
+  ],
+  "data_sources": [
+    "snowflake"
+  ],
+  "snowflake_config": {
+    "account": "re18978.us-east-1",
+    "user": "ETL_SYS_USR",
+    "warehouse": "ETL",
+    "database": "ODS",
+    "schema": "PUBLIC",
+    "private_key_path": "rf-prod/snowflake/rsa-private-key/etl_sys_usr"
+  }
+}

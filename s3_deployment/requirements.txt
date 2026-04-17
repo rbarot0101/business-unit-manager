@@ -1,0 +1,10 @@
+# Business Unit Manager - S3 Deployment Requirements
+# These dependencies are in addition to the Hub's base environment
+
+# Core dependencies (provided by Hub)
+# streamlit>=1.53.0
+# pandas
+# snowflake-connector-python>=4.2.0
+
+# No additional dependencies required
+# The app uses only Hub-provided packages
