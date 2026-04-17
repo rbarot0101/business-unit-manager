@@ -195,20 +195,35 @@ def render_business_units_table():
 
     st.info(f"Showing {len(df)} records")
 
-    event = st.dataframe(
-        df,
-        use_container_width=True,
-        hide_index=True,
-        height=400,
-        selection_mode="single-row",
-        on_select="rerun"
-    )
+    # Display dataframe (compatible with older Streamlit versions)
+    st.dataframe(df, use_container_width=True, height=400)
 
-    if event.selection.rows:
-        idx = event.selection.rows[0]
-        st.session_state.selected_row_data = df.iloc[idx].to_dict()
-        st.session_state.edit_mode = True
-        st.success(f"Selected: {st.session_state.selected_row_data.get('STORE_CD')}")
+    # Row selection using selectbox
+    st.markdown("**Select a record to edit:**")
+
+    # Create display options for selectbox
+    if not df.empty:
+        # Create a readable display for each row
+        options = ["-- Select a record --"] + [
+            f"{row['STORE_CD']} - Lat: {row.get('ADDR_LATITUDE', 'N/A')}, Lon: {row.get('ADDR_LONGITUDE', 'N/A')}"
+            for _, row in df.iterrows()
+        ]
+
+        selected_option = st.selectbox(
+            "Choose a record:",
+            options=options,
+            key="bu_selectbox"
+        )
+
+        if selected_option != "-- Select a record --":
+            # Extract store code from the selected option
+            store_cd = selected_option.split(" - ")[0]
+            # Find the row in dataframe
+            selected_row = df[df['STORE_CD'] == store_cd]
+            if not selected_row.empty:
+                st.session_state.selected_row_data = selected_row.iloc[0].to_dict()
+                st.session_state.edit_mode = True
+                st.success(f"Selected: {store_cd}")
 
     if st.session_state.edit_mode and st.session_state.selected_row_data:
         render_business_unit_form()
@@ -223,20 +238,35 @@ def render_web_names_table():
 
     st.info(f"Showing {len(df)} records")
 
-    event = st.dataframe(
-        df,
-        use_container_width=True,
-        hide_index=True,
-        height=400,
-        selection_mode="single-row",
-        on_select="rerun"
-    )
+    # Display dataframe (compatible with older Streamlit versions)
+    st.dataframe(df, use_container_width=True, height=400)
 
-    if event.selection.rows:
-        idx = event.selection.rows[0]
-        st.session_state.selected_row_data = df.iloc[idx].to_dict()
-        st.session_state.edit_mode = True
-        st.success(f"Selected: {st.session_state.selected_row_data.get('DISPLAY_NAME')}")
+    # Row selection using selectbox
+    st.markdown("**Select a record to edit:**")
+
+    # Create display options for selectbox
+    if not df.empty:
+        # Create a readable display for each row
+        options = ["-- Select a record --"] + [
+            f"{row.get('BUSINESS_UNIT_CD', 'N/A')} - {row.get('DISPLAY_NAME', 'N/A')} ({row.get('CITY', 'N/A')})"
+            for _, row in df.iterrows()
+        ]
+
+        selected_option = st.selectbox(
+            "Choose a record:",
+            options=options,
+            key="wn_selectbox"
+        )
+
+        if selected_option != "-- Select a record --":
+            # Extract business unit code from the selected option
+            business_unit_cd = selected_option.split(" - ")[0]
+            # Find the row in dataframe
+            selected_row = df[df['BUSINESS_UNIT_CD'] == business_unit_cd]
+            if not selected_row.empty:
+                st.session_state.selected_row_data = selected_row.iloc[0].to_dict()
+                st.session_state.edit_mode = True
+                st.success(f"Selected: {selected_row.iloc[0].get('DISPLAY_NAME')}")
 
     if st.session_state.edit_mode and st.session_state.selected_row_data:
         render_web_name_form()
