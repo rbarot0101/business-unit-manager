@@ -47,6 +47,11 @@ def get_business_units(search_term: Optional[str] = None) -> pd.DataFrame:
         where_clause = ""
 
         if search_term:
+            # TODO: hyphen-as-combined-label is a heuristic. A DISPLAY_NAME
+            # containing "-" (e.g. "Winston-Salem") typed raw would be
+            # misrouted as a combined label. Safe today because real
+            # DISPLAY_NAME values have no hyphens. Harden by passing an
+            # explicit flag from the caller when input came from the picker.
             if "-" in search_term:
                 prefix = search_term.split("-", 1)[0]
                 where_clause = " WHERE bd.STORE_CD ILIKE %(needle)s"
