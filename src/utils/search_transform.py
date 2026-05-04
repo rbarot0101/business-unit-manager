@@ -16,4 +16,17 @@ def resolve_search_term(typed: str, labels: List[dict]) -> Optional[str]:
     """
     if not typed:
         return ""
-    raise NotImplementedError
+
+    needle = typed.casefold()
+    matches = [
+        row for row in labels
+        if needle in row["BUSINESS_UNIT_CD"].casefold()
+        or needle in row["DISPLAY_NAME"].casefold()
+        or needle in row["COMBINED_LABEL"].casefold()
+    ]
+
+    unique_labels = {row["COMBINED_LABEL"] for row in matches}
+    if len(unique_labels) == 1:
+        return next(iter(unique_labels))
+
+    return typed

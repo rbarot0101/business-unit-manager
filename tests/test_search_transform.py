@@ -11,3 +11,11 @@ SAMPLE_LABELS = [
 
 def test_empty_term_returns_empty():
     assert resolve_search_term("", SAMPLE_LABELS) == ""
+
+
+def test_unique_match_by_business_unit_cd_transforms():
+    assert resolve_search_term("B6", SAMPLE_LABELS) == "B6-Natick"
+
+
+def test_unique_match_is_case_insensitive():
+    assert resolve_search_term("b6", SAMPLE_LABELS) == "B6-Natick"
