@@ -27,3 +27,12 @@ def test_unique_match_by_display_name_transforms():
 
 def test_exact_combined_label_is_returned_unchanged():
     assert resolve_search_term("B6-Natick", SAMPLE_LABELS) == "B6-Natick"
+
+
+def test_ambiguous_term_returns_typed_unchanged():
+    # "new" matches both "B8-New York" and "B9-New Haven"
+    assert resolve_search_term("new", SAMPLE_LABELS) == "new"
+
+
+def test_no_match_returns_typed_unchanged():
+    assert resolve_search_term("XYZ", SAMPLE_LABELS) == "XYZ"
