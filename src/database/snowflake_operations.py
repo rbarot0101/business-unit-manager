@@ -30,31 +30,46 @@ def get_snowflake_connection():
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_business_units(search_term: Optional[str] = None) -> pd.DataFrame:
     """
-    Fetch business unit details from configurable table (backup or production).
-
-    Args:
-        search_term: Optional search term to filter results
-
-    Returns:
-        DataFrame containing business unit details
+    Fetch business unit details. The search term may be a raw STORE_CD,
+    a DISPLAY_NAME fragment, or a combined "STORE_CD-DISPLAY_NAME" label.
+    When a combined label is provided (contains '-'), only the prefix is used
+    to filter on STORE_CD.
     """
     try:
         conn = get_snowflake_connection()
         tables = get_table_names()
-        table_name = f"ODS.PUBLIC.{tables['business_unit_details']}"
+        bu_table = f"ODS.PUBLIC.{tables['business_unit_details']}"
+        wn_table = f"ODS.PUBLIC.{tables['business_unit_web_name']}"
 
-        query = f"SELECT * FROM {table_name}"
+        base_query = f"SELECT bd.* FROM {bu_table} bd"
+
+        params: Dict[str, Any] = {}
+        where_clause = ""
 
         if search_term:
-            query += f" WHERE STORE_CD ILIKE '%{search_term}%'"
+            if "-" in search_term:
+                prefix = search_term.split("-", 1)[0]
+                where_clause = " WHERE bd.STORE_CD ILIKE %(needle)s"
+                params["needle"] = f"%{prefix}%"
+            else:
+                # Search STORE_CD directly and DISPLAY_NAME via the web-name join
+                base_query += (
+                    f" LEFT JOIN {wn_table} wn ON bd.STORE_CD = wn.BUSINESS_UNIT_CD"
+                )
+                where_clause = (
+                    " WHERE bd.STORE_CD ILIKE %(needle)s"
+                    " OR wn.DISPLAY_NAME ILIKE %(needle)s"
+                    " OR wn.BUSINESS_UNIT_CD ILIKE %(needle)s"
+                )
+                params["needle"] = f"%{search_term}%"
 
-        query += " ORDER BY STORE_CD"
+        query = base_query + where_clause + " ORDER BY bd.STORE_CD"
 
-        logger.debug(f"Executing query: {query}")
+        logger.debug(f"Executing query: {query} params={params}")
         cursor = conn.cursor()
-        cursor.execute(query)
+        cursor.execute(query, params)
         df = cursor.fetch_pandas_all()
-        logger.info(f"Fetched {len(df)} business unit records from {table_name}")
+        logger.info(f"Fetched {len(df)} business unit records from {bu_table}")
         return df
 
     except Exception as e:
