@@ -47,12 +47,28 @@ def get_business_units(search_term=None):
     """Fetch business unit details."""
     session = get_active_session()
     tables = get_table_names()
-    table_name = f"ODS.PUBLIC.{tables['business_unit_details']}"
+    bu_table = f"ODS.PUBLIC.{tables['business_unit_details']}"
+    wn_table = f"ODS.PUBLIC.{tables['business_unit_web_name']}"
 
-    query = f"SELECT * FROM {table_name}"
-    if search_term:
-        query += f" WHERE STORE_CD ILIKE '%{search_term}%'"
-    query += " ORDER BY STORE_CD"
+    if search_term and "-" in search_term:
+        prefix = search_term.split("-", 1)[0].replace("'", "''")
+        query = (
+            f"SELECT bd.* FROM {bu_table} bd"
+            f" WHERE bd.STORE_CD ILIKE '%{prefix}%'"
+            " ORDER BY bd.STORE_CD"
+        )
+    elif search_term:
+        needle = search_term.replace("'", "''")
+        query = (
+            f"SELECT bd.* FROM {bu_table} bd"
+            f" LEFT JOIN {wn_table} wn ON bd.STORE_CD = wn.BUSINESS_UNIT_CD"
+            f" WHERE bd.STORE_CD ILIKE '%{needle}%'"
+            f" OR wn.DISPLAY_NAME ILIKE '%{needle}%'"
+            f" OR wn.BUSINESS_UNIT_CD ILIKE '%{needle}%'"
+            " ORDER BY bd.STORE_CD"
+        )
+    else:
+        query = f"SELECT * FROM {bu_table} ORDER BY STORE_CD"
 
     return session.sql(query).to_pandas()
 
@@ -64,7 +80,7 @@ def get_web_names(search_term=None):
     bu_table = f"ODS.PUBLIC.{tables['business_unit_details']}"
     wn_table = f"ODS.PUBLIC.{tables['business_unit_web_name']}"
 
-    query = f"""
+    base_query = f"""
         SELECT
             bd.STORE_CD,
             wn.BUSINESS_UNIT_CD,
@@ -79,11 +95,62 @@ def get_web_names(search_term=None):
             ON bd.STORE_CD = wn.BUSINESS_UNIT_CD
     """
 
-    if search_term:
-        query += f" WHERE wn.DISPLAY_NAME ILIKE '%{search_term}%' OR wn.CITY ILIKE '%{search_term}%' OR CAST(wn.BUSINESS_UNIT_CD AS VARCHAR) LIKE '%{search_term}%'"
+    if search_term and "-" in search_term:
+        prefix = search_term.split("-", 1)[0].replace("'", "''")
+        query = base_query + f" WHERE wn.BUSINESS_UNIT_CD ILIKE '%{prefix}%'"
+    elif search_term:
+        needle = search_term.replace("'", "''")
+        query = base_query + (
+            f" WHERE wn.DISPLAY_NAME ILIKE '%{needle}%'"
+            f" OR wn.CITY ILIKE '%{needle}%'"
+            f" OR wn.BUSINESS_UNIT_CD ILIKE '%{needle}%'"
+        )
+    else:
+        query = base_query
     query += " ORDER BY bd.STORE_CD"
 
     return session.sql(query).to_pandas()
+
+@st.cache_data(ttl=300)
+def get_store_labels():
+    """Fetch BUSINESS_UNIT_CD / DISPLAY_NAME / COMBINED_LABEL for search resolution."""
+    session = get_active_session()
+    tables = get_table_names()
+    bu_table = f"ODS.PUBLIC.{tables['business_unit_details']}"
+    wn_table = f"ODS.PUBLIC.{tables['business_unit_web_name']}"
+
+    query = f"""
+        SELECT
+            wn.BUSINESS_UNIT_CD,
+            wn.DISPLAY_NAME,
+            wn.BUSINESS_UNIT_CD || '-' || wn.DISPLAY_NAME AS COMBINED_LABEL
+        FROM {bu_table} bd
+        JOIN {wn_table} wn
+            ON bd.STORE_CD = wn.BUSINESS_UNIT_CD
+        WHERE wn.BUSINESS_UNIT_CD IS NOT NULL
+          AND wn.DISPLAY_NAME IS NOT NULL
+        ORDER BY wn.BUSINESS_UNIT_CD
+    """
+    return session.sql(query).to_pandas()
+
+def resolve_search_term(typed, labels):
+    """Return COMBINED_LABEL if typed uniquely matches one store, else typed."""
+    if not typed:
+        return ""
+
+    needle = typed.casefold()
+    matches = [
+        row for row in labels
+        if needle in str(row.get("BUSINESS_UNIT_CD", "")).casefold()
+        or needle in str(row.get("DISPLAY_NAME", "")).casefold()
+        or needle in str(row.get("COMBINED_LABEL", "")).casefold()
+    ]
+
+    unique_labels = {row["COMBINED_LABEL"] for row in matches}
+    if len(unique_labels) == 1:
+        return next(iter(unique_labels))
+
+    return typed
 
 def update_business_unit(store_cd, updates):
     """Update business unit record."""
@@ -220,7 +287,25 @@ def render_sidebar():
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔍 Search")
-    st.session_state.search_term = st.sidebar.text_input("Search records", value=st.session_state.search_term)
+
+    if "search_input" not in st.session_state:
+        st.session_state["search_input"] = st.session_state.get("search_term", "")
+
+    def _on_search_change():
+        typed = st.session_state.get("search_input", "") or ""
+        labels_df = get_store_labels()
+        labels = labels_df.to_dict("records") if not labels_df.empty else []
+        resolved = resolve_search_term(typed, labels)
+        st.session_state.search_term = resolved
+        if resolved != typed:
+            st.session_state["search_input"] = resolved
+
+    st.sidebar.text_input(
+        "Search records",
+        placeholder="Enter search term...",
+        key="search_input",
+        on_change=_on_search_change,
+    )
 
     st.sidebar.markdown("---")
     col1, col2 = st.sidebar.columns(2)
@@ -229,18 +314,23 @@ def render_sidebar():
         if st.button("🔄 Refresh", use_container_width=True):
             get_business_units.clear()
             get_web_names.clear()
+            get_store_labels.clear()
             st.session_state.last_refresh = datetime.now()
             st.experimental_rerun()
 
+    def _on_clear_click():
+        st.session_state.selected_row_index = None
+        st.session_state.selected_row_data = None
+        st.session_state.edit_mode = False
+        st.session_state.search_term = ""
+        st.session_state["search_input"] = ""
+        st.session_state.bu_selected_option = "-- Select a record --"
+        st.session_state.wn_selected_option = "-- Select a record --"
+        get_business_units.clear()
+        get_web_names.clear()
+
     with col2:
-        if st.button("✖ Clear", use_container_width=True):
-            st.session_state.selected_row_index = None
-            st.session_state.selected_row_data = None
-            st.session_state.edit_mode = False
-            st.session_state.search_term = ""
-            st.session_state.bu_selected_option = "-- Select a record --"
-            st.session_state.wn_selected_option = "-- Select a record --"
-            st.experimental_rerun()
+        st.button("✖ Clear", use_container_width=True, on_click=_on_clear_click)
 
 def render_business_units_table():
     """Render business units table."""
