@@ -3,10 +3,10 @@ combined "BUSINESS_UNIT_CD-DISPLAY_NAME" label when it uniquely matches
 a known store.
 """
 
-from typing import List, Optional
+from typing import List
 
 
-def resolve_search_term(typed: str, labels: List[dict]) -> Optional[str]:
+def resolve_search_term(typed: str, labels: List[dict]) -> str:
     """Return the transformed label if `typed` uniquely identifies one store,
     otherwise return the typed term unchanged. Returns an empty string if
     `typed` is empty.
