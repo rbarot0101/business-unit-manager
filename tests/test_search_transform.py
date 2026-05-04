@@ -19,3 +19,11 @@ def test_unique_match_by_business_unit_cd_transforms():
 
 def test_unique_match_is_case_insensitive():
     assert resolve_search_term("b6", SAMPLE_LABELS) == "B6-Natick"
+
+
+def test_unique_match_by_display_name_transforms():
+    assert resolve_search_term("Natick", SAMPLE_LABELS) == "B6-Natick"
+
+
+def test_exact_combined_label_is_returned_unchanged():
+    assert resolve_search_term("B6-Natick", SAMPLE_LABELS) == "B6-Natick"
