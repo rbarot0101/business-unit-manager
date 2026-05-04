@@ -113,6 +113,47 @@ def get_web_names(search_term: Optional[str] = None) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_store_labels() -> pd.DataFrame:
+    """
+    Fetch the join of business unit details and web names, producing one row
+    per store with columns BUSINESS_UNIT_CD, DISPLAY_NAME, and COMBINED_LABEL
+    ("BUSINESS_UNIT_CD-DISPLAY_NAME"). Used to resolve sidebar search terms
+    into a canonical store label.
+
+    Returns:
+        DataFrame with columns: BUSINESS_UNIT_CD, DISPLAY_NAME, COMBINED_LABEL
+    """
+    try:
+        conn = get_snowflake_connection()
+        tables = get_table_names()
+        bu_table = f"ODS.PUBLIC.{tables['business_unit_details']}"
+        wn_table = f"ODS.PUBLIC.{tables['business_unit_web_name']}"
+
+        query = f"""
+            SELECT
+                wn.BUSINESS_UNIT_CD,
+                wn.DISPLAY_NAME,
+                wn.BUSINESS_UNIT_CD || '-' || wn.DISPLAY_NAME AS COMBINED_LABEL
+            FROM {bu_table} bd
+            JOIN {wn_table} wn
+                ON bd.STORE_CD = wn.BUSINESS_UNIT_CD
+            WHERE wn.BUSINESS_UNIT_CD IS NOT NULL
+              AND wn.DISPLAY_NAME IS NOT NULL
+        """
+
+        logger.debug(f"Executing query: {query}")
+        cursor = conn.cursor()
+        cursor.execute(query)
+        df = cursor.fetch_pandas_all()
+        logger.info(f"Fetched {len(df)} store labels")
+        return df
+
+    except Exception as e:
+        logger.error(f"Error fetching store labels: {e}")
+        return pd.DataFrame(columns=["BUSINESS_UNIT_CD", "DISPLAY_NAME", "COMBINED_LABEL"])
+
+
 def update_business_unit(store_cd: str, updates: Dict[str, Any]) -> bool:
     """
     Update a business unit record in configurable table (backup or production).
