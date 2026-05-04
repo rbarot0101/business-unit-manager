@@ -387,9 +387,19 @@ def render_business_units_table():
     st.caption("👇 Use the dropdown below to select a record")
 
     if not df.empty:
+        # Build STORE_CD -> COMBINED_LABEL lookup so dropdown matches the sidebar search format
+        labels_df = get_store_labels()
+        label_map = {
+            row["BUSINESS_UNIT_CD"]: row["COMBINED_LABEL"]
+            for _, row in labels_df.iterrows()
+        } if not labels_df.empty else {}
+
+        def _bu_label(store_cd):
+            return label_map.get(store_cd, store_cd)
+
+        # Create a readable display for each row (matches "BUSINESS_UNIT_CD-DISPLAY_NAME")
         options = ["-- Select a record --"] + [
-            f"{row['STORE_CD']} - Lat: {row.get('ADDR_LATITUDE', 'N/A')}, Lon: {row.get('ADDR_LONGITUDE', 'N/A')}"
-            for _, row in df.iterrows()
+            _bu_label(row["STORE_CD"]) for _, row in df.iterrows()
         ]
 
         # Auto-select if only 1 record
@@ -419,13 +429,13 @@ def render_business_units_table():
         )
 
         if selected_option != "-- Select a record --":
-            store_cd = selected_option.split(" - ")[0]
+            store_cd = selected_option.split("-", 1)[0]
             selected_row = df[df['STORE_CD'] == store_cd]
             if not selected_row.empty:
                 st.session_state.selected_row_data = selected_row.iloc[0].to_dict()
                 st.session_state.edit_mode = True
                 st.session_state.bu_selected_option = selected_option
-                st.success(f"Selected: {store_cd}")
+                st.success(f"Selected: {selected_option}")
         else:
             st.session_state.selected_row_data = None
             st.session_state.edit_mode = False
@@ -574,8 +584,9 @@ def render_web_names_table():
     st.caption("👇 Use the dropdown below to select a record")
 
     if not df.empty:
+        # Create display options matching sidebar search "BUSINESS_UNIT_CD-DISPLAY_NAME"
         options = ["-- Select a record --"] + [
-            f"{row.get('BUSINESS_UNIT_CD', 'N/A')} - {row.get('DISPLAY_NAME', 'N/A')} ({row.get('CITY', 'N/A')})"
+            f"{row.get('BUSINESS_UNIT_CD', 'N/A')}-{row.get('DISPLAY_NAME', 'N/A')}"
             for _, row in df.iterrows()
         ]
 
@@ -606,7 +617,7 @@ def render_web_names_table():
         )
 
         if selected_option != "-- Select a record --":
-            business_unit_cd = selected_option.split(" - ")[0]
+            business_unit_cd = selected_option.split("-", 1)[0]
             selected_row = df[df['BUSINESS_UNIT_CD'] == business_unit_cd]
             if not selected_row.empty:
                 st.session_state.selected_row_data = selected_row.iloc[0].to_dict()
