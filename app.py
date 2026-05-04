@@ -14,9 +14,11 @@ from src.database.snowflake_operations import (
     get_snowflake_connection,
     get_business_units,
     get_web_names,
+    get_store_labels,
     update_business_unit,
-    update_web_name
+    update_web_name,
 )
+from src.utils.search_transform import resolve_search_term
 
 # Import validators
 from src.utils.validators import (
@@ -150,13 +152,25 @@ def render_sidebar():
 
     # Search/Filter
     st.sidebar.subheader("🔍 Search")
-    search_input = st.sidebar.text_input(
+
+    if "search_input" not in st.session_state:
+        st.session_state["search_input"] = st.session_state.get("search_term", "")
+
+    def _on_search_change():
+        typed = st.session_state.get("search_input", "") or ""
+        labels_df = get_store_labels()
+        labels = labels_df.to_dict("records") if not labels_df.empty else []
+        resolved = resolve_search_term(typed, labels)
+        st.session_state.search_term = resolved
+        if resolved != typed:
+            st.session_state["search_input"] = resolved
+
+    st.sidebar.text_input(
         "Search records",
-        value=st.session_state.search_term,
         placeholder="Enter search term...",
-        key="search_input"
+        key="search_input",
+        on_change=_on_search_change,
     )
-    st.session_state.search_term = search_input
 
     st.sidebar.markdown("---")
 
@@ -178,12 +192,15 @@ def render_sidebar():
             st.success("✅ Data refreshed!")
             st.rerun()
 
+    def _on_clear_click():
+        st.session_state.selected_row_index = None
+        st.session_state.selected_row_data = None
+        st.session_state.edit_mode = False
+        st.session_state.search_term = ""
+        st.session_state["search_input"] = ""
+
     with col2:
-        if st.button("✖ Clear Selection", use_container_width=True, disabled=not st.session_state.edit_mode):
-            st.session_state.selected_row_index = None
-            st.session_state.selected_row_data = None
-            st.session_state.edit_mode = False
-            st.rerun()
+        st.button("✖ Clear", use_container_width=True, on_click=_on_clear_click)
 
     st.sidebar.markdown("---")
 
@@ -501,23 +518,25 @@ def render_business_unit_edit_form():
             # Store hours section
             st.markdown("**Store Hours**")
 
-            hours_col1, hours_col2, hours_col3, hours_col4 = st.columns(4)
+            open_col, close_col = st.columns(2)
 
-            with hours_col1:
+            with open_col:
                 sunday_open = st.text_input("Sunday Open", value=row_data.get('SUNDAY_OPEN', ''))
                 monday_open = st.text_input("Monday Open", value=row_data.get('MONDAY_OPEN', ''))
-
-            with hours_col2:
-                sunday_close = st.text_input("Sunday Close", value=row_data.get('SUNDAY_CLOSE', ''))
-                monday_close = st.text_input("Monday Close", value=row_data.get('MONDAY_CLOSE', ''))
-
-            with hours_col3:
                 tuesday_open = st.text_input("Tuesday Open", value=row_data.get('TUESDAY_OPEN', ''))
                 wednesday_open = st.text_input("Wednesday Open", value=row_data.get('WEDNESDAY_OPEN', ''))
+                thursday_open = st.text_input("Thursday Open", value=row_data.get('THURSDAY_OPEN', ''))
+                friday_open = st.text_input("Friday Open", value=row_data.get('FRIDAY_OPEN', ''))
+                saturday_open = st.text_input("Saturday Open", value=row_data.get('SATURDAY_OPEN', ''))
 
-            with hours_col4:
+            with close_col:
+                sunday_close = st.text_input("Sunday Close", value=row_data.get('SUNDAY_CLOSE', ''))
+                monday_close = st.text_input("Monday Close", value=row_data.get('MONDAY_CLOSE', ''))
                 tuesday_close = st.text_input("Tuesday Close", value=row_data.get('TUESDAY_CLOSE', ''))
                 wednesday_close = st.text_input("Wednesday Close", value=row_data.get('WEDNESDAY_CLOSE', ''))
+                thursday_close = st.text_input("Thursday Close", value=row_data.get('THURSDAY_CLOSE', ''))
+                friday_close = st.text_input("Friday Close", value=row_data.get('FRIDAY_CLOSE', ''))
+                saturday_close = st.text_input("Saturday Close", value=row_data.get('SATURDAY_CLOSE', ''))
 
             # Form buttons
             col1, col2, col3 = st.columns([1, 1, 4])
@@ -558,6 +577,12 @@ def render_business_unit_edit_form():
                         'TUESDAY_CLOSE': tuesday_close,
                         'WEDNESDAY_OPEN': wednesday_open,
                         'WEDNESDAY_CLOSE': wednesday_close,
+                        'THURSDAY_OPEN': thursday_open,
+                        'THURSDAY_CLOSE': thursday_close,
+                        'FRIDAY_OPEN': friday_open,
+                        'FRIDAY_CLOSE': friday_close,
+                        'SATURDAY_OPEN': saturday_open,
+                        'SATURDAY_CLOSE': saturday_close,
                     }
 
                     # Perform update
