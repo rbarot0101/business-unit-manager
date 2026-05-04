@@ -140,13 +140,14 @@ def get_store_labels() -> pd.DataFrame:
                 ON bd.STORE_CD = wn.BUSINESS_UNIT_CD
             WHERE wn.BUSINESS_UNIT_CD IS NOT NULL
               AND wn.DISPLAY_NAME IS NOT NULL
+            ORDER BY wn.BUSINESS_UNIT_CD
         """
 
         logger.debug(f"Executing query: {query}")
         cursor = conn.cursor()
         cursor.execute(query)
         df = cursor.fetch_pandas_all()
-        logger.info(f"Fetched {len(df)} store labels")
+        logger.info(f"Fetched {len(df)} store labels from {wn_table}")
         return df
 
     except Exception as e:
