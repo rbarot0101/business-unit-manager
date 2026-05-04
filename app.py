@@ -14,9 +14,11 @@ from src.database.snowflake_operations import (
     get_snowflake_connection,
     get_business_units,
     get_web_names,
+    get_store_labels,
     update_business_unit,
-    update_web_name
+    update_web_name,
 )
+from src.utils.search_transform import resolve_search_term
 
 # Import validators
 from src.utils.validators import (
@@ -156,7 +158,14 @@ def render_sidebar():
         placeholder="Enter search term...",
         key="search_input"
     )
-    st.session_state.search_term = search_input
+
+    if search_input != st.session_state.search_term:
+        labels_df = get_store_labels()
+        labels = labels_df.to_dict("records") if not labels_df.empty else []
+        resolved = resolve_search_term(search_input, labels)
+        st.session_state.search_term = resolved
+        if resolved != search_input:
+            st.rerun()
 
     st.sidebar.markdown("---")
 
