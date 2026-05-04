@@ -86,13 +86,10 @@ def get_business_units(search_term: Optional[str] = None) -> pd.DataFrame:
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_web_names(search_term: Optional[str] = None) -> pd.DataFrame:
     """
-    Fetch web name details with business unit information from configurable tables.
-
-    Args:
-        search_term: Optional search term to filter results
-
-    Returns:
-        DataFrame containing web name details with business unit info
+    Fetch web-name records joined with business unit details. The search term
+    may be a raw code/name or a combined "BUSINESS_UNIT_CD-DISPLAY_NAME" label.
+    When a combined label is provided, only the prefix is used to match on
+    BUSINESS_UNIT_CD.
     """
     try:
         conn = get_snowflake_connection()
@@ -100,7 +97,7 @@ def get_web_names(search_term: Optional[str] = None) -> pd.DataFrame:
         bu_table = f"ODS.PUBLIC.{tables['business_unit_details']}"
         wn_table = f"ODS.PUBLIC.{tables['business_unit_web_name']}"
 
-        query = f"""
+        base_query = f"""
             SELECT
                 bd.STORE_CD,
                 wn.BUSINESS_UNIT_CD,
@@ -115,14 +112,32 @@ def get_web_names(search_term: Optional[str] = None) -> pd.DataFrame:
                 ON bd.STORE_CD = wn.BUSINESS_UNIT_CD
         """
 
+        params: Dict[str, Any] = {}
+        where_clause = ""
+
         if search_term:
-            query += f" WHERE wn.DISPLAY_NAME ILIKE '%{search_term}%' OR wn.CITY ILIKE '%{search_term}%' OR CAST(wn.BUSINESS_UNIT_CD AS VARCHAR) LIKE '%{search_term}%'"
+            # TODO: hyphen-as-combined-label is a heuristic. A DISPLAY_NAME
+            # containing "-" (e.g. "Winston-Salem") typed raw would be
+            # misrouted as a combined label. Safe today because real
+            # DISPLAY_NAME values have no hyphens. Harden by passing an
+            # explicit flag from the caller when input came from the picker.
+            if "-" in search_term:
+                prefix = search_term.split("-", 1)[0]
+                where_clause = " WHERE wn.BUSINESS_UNIT_CD ILIKE %(needle)s"
+                params["needle"] = f"%{prefix}%"
+            else:
+                where_clause = (
+                    " WHERE wn.DISPLAY_NAME ILIKE %(needle)s"
+                    " OR wn.CITY ILIKE %(needle)s"
+                    " OR wn.BUSINESS_UNIT_CD ILIKE %(needle)s"
+                )
+                params["needle"] = f"%{search_term}%"
 
-        query += " ORDER BY bd.STORE_CD"
+        query = base_query + where_clause + " ORDER BY bd.STORE_CD"
 
-        logger.debug(f"Executing query: {query}")
+        logger.debug(f"Executing query: {query} params={params}")
         cursor = conn.cursor()
-        cursor.execute(query)
+        cursor.execute(query, params)
         df = cursor.fetch_pandas_all()
         logger.info(f"Fetched {len(df)} web name records from {wn_table}")
         return df
