@@ -1,0 +1,13 @@
+from src.utils.search_transform import resolve_search_term
+
+
+SAMPLE_LABELS = [
+    {"BUSINESS_UNIT_CD": "B6", "DISPLAY_NAME": "Natick", "COMBINED_LABEL": "B6-Natick"},
+    {"BUSINESS_UNIT_CD": "B7", "DISPLAY_NAME": "Albany", "COMBINED_LABEL": "B7-Albany"},
+    {"BUSINESS_UNIT_CD": "B8", "DISPLAY_NAME": "New York", "COMBINED_LABEL": "B8-New York"},
+    {"BUSINESS_UNIT_CD": "B9", "DISPLAY_NAME": "New Haven", "COMBINED_LABEL": "B9-New Haven"},
+]
+
+
+def test_empty_term_returns_empty():
+    assert resolve_search_term("", SAMPLE_LABELS) == ""

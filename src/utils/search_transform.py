@@ -14,4 +14,6 @@ def resolve_search_term(typed: str, labels: List[dict]) -> Optional[str]:
     Each entry in `labels` must have keys: 'BUSINESS_UNIT_CD', 'DISPLAY_NAME',
     'COMBINED_LABEL'.
     """
+    if not typed:
+        return ""
     raise NotImplementedError
